@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>숲선물 – 로그인</title><meta name="robots" content="noindex,nofollow">
+<style>
+body{margin:0;font-family:"Pretendard","Malgun Gothic",sans-serif;background:#f7faf8;color:#1f1f1f;display:grid;place-items:center;min-height:100vh}
+.box{width:min(380px,92vw);background:#fff;border:1px solid #e4e4e4;border-radius:8px;padding:32px 28px}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.04em;color:#153d2b}h1 small{display:block;font-size:11px;letter-spacing:.14em;color:#8a8a8a;font-weight:700;margin-top:4px}
+p{font-size:13px;color:#444;margin:14px 0 18px}
+input{width:100%;box-sizing:border-box;height:44px;border:1px solid #cfd8d2;border-radius:4px;padding:0 12px;font-size:16px;outline:none}
+input:focus{border-color:#2a7a52}
+button{width:100%;height:44px;margin-top:10px;border:0;border-radius:4px;background:#1e5c3f;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5}
+.err{color:#c23b2c;font-size:12.5px;margin-top:10px;min-height:18px}
+.foot{font-size:11.5px;color:#8a8a8a;margin-top:18px}
+</style></head><body>
+<form class="box" id="f"><h1>숲선물<small>SOOP GIFT · 임산물 기념품 추천·구매 도우미</small></h1>
+<p>비밀번호를 입력하면 사이트가 열립니다.</p>
+<input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password" autofocus>
+<button id="b" type="submit">열기</button><div class="err" id="e"></div>
+<div class="foot">내용은 암호화되어 있어 비밀번호 없이는 볼 수 없습니다. 기록은 이 브라우저에만 저장됩니다.</div></form>
+<script>
+const ITER=200000;
+async function open(pw){
+  const buf=new Uint8Array(await (await fetch('app.enc',{cache:'force-cache'})).arrayBuffer());
+  const salt=buf.slice(0,16), iv=buf.slice(16,28), ct=buf.slice(28);
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:ITER,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+  const html=new TextDecoder().decode(plain);
+  try{sessionStorage.setItem('soopgift.pw',pw);}catch(e){}
+  document.open();document.write(html);document.close();
+}
+document.getElementById('f').addEventListener('submit',async(ev)=>{ev.preventDefault();const b=document.getElementById('b'),e=document.getElementById('e');b.disabled=true;e.textContent='확인 중…';
+  try{await open(document.getElementById('pw').value);}catch(err){e.textContent='비밀번호가 맞지 않습니다.';b.disabled=false;}});
+try{const s=sessionStorage.getItem('soopgift.pw');if(s){open(s).catch(()=>{});}}catch(e){}
+</script></body></html>
